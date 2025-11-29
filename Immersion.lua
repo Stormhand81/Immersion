@@ -483,20 +483,6 @@ local function IsActionBarish(name)
   if name=="DFRL_ActionBar" or name=="DFRL_MainBar" then return true end
   return false
 end
-
-
--- Create an invisible hover hotspot over the PlayerFrame that is always mouseable,
--- even when the PlayerFrame itself is faded/hidden by other controllers.
-local Immersion_PlayerHoverFrame
-local function Immersion_SetupPlayerHover()
-  if Immersion_PlayerHoverFrame or not PlayerFrame then return end
-  Immersion_PlayerHoverFrame = CreateFrame("Frame", "Immersion_PlayerHoverFrame", UIParent)
-  Immersion_PlayerHoverFrame:SetFrameStrata("LOW")
-  Immersion_PlayerHoverFrame:SetAllPoints(PlayerFrame)
-  Immersion_PlayerHoverFrame:EnableMouse(true)
-  Immersion_PlayerHoverFrame:Show()
-end
-
 local immersionPlayerHoverInit = CreateFrame("Frame")
 immersionPlayerHoverInit:RegisterEvent("PLAYER_ENTERING_WORLD")
 immersionPlayerHoverInit:SetScript("OnEvent", function()
