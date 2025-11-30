@@ -41,11 +41,10 @@ It’s a tool designed for players who love WoW’s aesthetics and want to prese
 
 🧭 Compatibility
 
-Works with Vanilla, TurtleWoW, and Classic-style UIs
+Works with Vanilla UI
 
-Fully compatible with DFUI (Dragonflight UI remake addons)
-
-Plays well with action bar addons and custom HUD frameworks
+Fully compatible with DragonFlight Reloaded 2 UI
+https://github.com/AmonRA/-DragonflightReloaded
 
 📦 Installation
 
