@@ -12,7 +12,7 @@ You decide when the UI shows itself.
 
 • Dragonflight UI Detection
 
-If the player has Dragonflight UI (DFUI) enabled, Immersion adapts automatically, safely hiding the default player frame and other redundant elements. No setup required.
+If the player has DragonFlight Reloaded 2 UI enabled, Immersion adapts automatically, safely hiding the default player frame and other redundant elements. No setup required.
 
 • Clean PlayerFrame Handling
 
