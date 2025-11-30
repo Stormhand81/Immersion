@@ -483,12 +483,6 @@ local function IsActionBarish(name)
   if name=="DFRL_ActionBar" or name=="DFRL_MainBar" then return true end
   return false
 end
-local immersionPlayerHoverInit = CreateFrame("Frame")
-immersionPlayerHoverInit:RegisterEvent("PLAYER_ENTERING_WORLD")
-immersionPlayerHoverInit:SetScript("OnEvent", function()
-  Immersion_SetupPlayerHover()
-end)
-
 
 local hoverWatch = CreateFrame("Frame"); hoverWatch:Show()
 hoverWatch.acc, hoverWatch.tick = 0, 0.05
