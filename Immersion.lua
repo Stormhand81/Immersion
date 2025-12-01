@@ -36,6 +36,7 @@ end
 local function FreshDB()
   return { enabled=true, debug=false, showOnTarget=true, fadeTime=3.0 }
 end
+
 local function asBool(v,d)
   if v==nil then return d end
   local t=type(v)
@@ -49,6 +50,7 @@ local function asBool(v,d)
   end
   return d
 end
+
 local function InitDB()
   if type(ImmersionDB)~="table" then ImmersionDB = FreshDB() end
   ImmersionDB.enabled      = asBool(ImmersionDB.enabled, true)
@@ -56,8 +58,17 @@ local function InitDB()
   ImmersionDB.showOnTarget = asBool(ImmersionDB.showOnTarget, true)
   ImmersionDB.fadeTime     = tonumber(ImmersionDB.fadeTime or 3.0)
 end
-local function G(n) if getglobal then return getglobal(n) end if _G then return _G[n] end end
-local function dprint(msg) if ImmersionDB and ImmersionDB.debug then DEFAULT_CHAT_FRAME:AddMessage(prefix.."|cFFBBBBBB"..msg.."|r") end end
+
+local function G(n)
+  if getglobal then return getglobal(n) end
+  if _G then return _G[n] end
+end
+
+local function dprint(msg)
+  if ImmersionDB and ImmersionDB.debug then
+    DEFAULT_CHAT_FRAME:AddMessage(prefix.."|cFFBBBBBB"..msg.."|r")
+  end
+end
 
 -- ===================== FIXED LIST OF FRAMES =====================
 local FRAME_NAMES = {
@@ -97,7 +108,7 @@ local FRAME_NAMES = {
 
 -- Frames we must NOT force :Show() on (conditional frames)
 local DO_NOT_FORCE_SHOW = {
-TargetFrameToT = true,
+  TargetFrameToT = true,
   PetFrame = true,
   PetCastingBarFrame = true,
   PartyMemberFrame2 = true,
@@ -132,8 +143,8 @@ local function NewController(fr)
   c.resume = fr:IsShown()
   c.deferFadeIn = false      -- defers fade-in if a fade-out is in progress (buffs only)
   c.deferReason = nil        -- optional: remember reason
-c.deferFadeOut = false
-c.deferOutReason = nil
+  c.deferFadeOut = false
+  c.deferOutReason = nil
 
   local function GetAlphaSafe()
     local a = c.frame and c.frame.GetAlpha and c.frame:GetAlpha() or 1
@@ -149,12 +160,14 @@ c.deferOutReason = nil
   function c:StartFade(targetAlpha, reason)
     if not self.frame then return end
     local name = self.frame:GetName() or ""
-  -- Minimal anti-flicker: if Buff-like is mid fade-IN and fade-OUT is requested, defer the OUT
-  if IsBuffLike(name) and targetAlpha == 0 and self.Fade.active and self.Fade.target == 1 then
-    self.deferFadeOut  = true
-    self.deferOutReason = reason or "deferred_buff_fadeout"
-    return
-  end
+
+    -- Minimal anti-flicker: if Buff-like is mid fade-IN and fade-OUT is requested, defer the OUT
+    if IsBuffLike(name) and targetAlpha == 0 and self.Fade.active and self.Fade.target == 1 then
+      self.deferFadeOut  = true
+      self.deferOutReason = reason or "deferred_buff_fadeout"
+      return
+    end
+
     local dontForce = DO_NOT_FORCE_SHOW[name]
     if targetAlpha == 1 and dontForce and not self.frame:IsShown() then
       dprint("["..name.."] skip force-show (conditional)")
@@ -163,7 +176,6 @@ c.deferOutReason = nil
       return
     end
 
-    
     if targetAlpha == 1 and self.frame:IsShown() then
       self.resume = true
     end
@@ -173,14 +185,12 @@ c.deferOutReason = nil
 
     -- priority fade-ins are shorter
     if targetAlpha == 1 and reason and (
-        string.find(reason, "priority:combat", 1, true) or
-        string.find(reason, "priority:target", 1, true) or
-        string.find(reason, "priority:mouseover", 1, true)
+      string.find(reason, "priority:combat", 1, true) or
+      string.find(reason, "priority:target", 1, true) or
+      string.find(reason, "priority:mouseover", 1, true)
     ) then
       self.Fade.duration = ClampDuration(0.8)
     end
-
-    local name = self.frame:GetName() or ""
 
     -- If BUFF-like is fading out and a fade-in arrives, defer the fade-in
     if IsBuffLike(name) and self.Fade.active and self.Fade.target == 0 and targetAlpha == 1 then
@@ -217,6 +227,7 @@ c.deferOutReason = nil
     local name = c.frame:GetName() or ""
     if t >= 1 then
       if c.frame.SetAlpha then c.frame:SetAlpha(c.Fade.target) end
+
       -- If we just completed a fade-in and a fade-out was deferred, run it now
       if c.Fade.target == 1 and c.deferFadeOut then
         local _r = c.deferOutReason or "deferred_buff_fadeout"
@@ -287,6 +298,7 @@ local function IsFrameAlphaActive(fr)
   end
   return true
 end
+
 local function IsZoneTextActive()
   local Z, S = G("ZoneTextFrame"), G("SubZoneTextFrame")
   return IsFrameAlphaActive(Z) or IsFrameAlphaActive(S)
@@ -332,7 +344,9 @@ zoneShowGuard:SetScript("OnUpdate", function()
     if zoneShowGuard.wantShow then
       zoneShowGuard.wantShow = false
       for _,c in pairs(Controllers) do
-        if c.resume ~= false then c:StartFade(1, (zoneShowGuard.waited >= zoneShowGuard.maxWait) and "show_timeout" or "show_after_zone") end
+        if c.resume ~= false then
+          c:StartFade(1, (zoneShowGuard.waited >= zoneShowGuard.maxWait) and "show_timeout" or "show_after_zone")
+        end
       end
     end
   end
@@ -352,13 +366,12 @@ local function ForceRestoreAllInstant()
   for fr,c in pairs(Controllers) do
     if c.resume ~= false then
       local n = fr:GetName() or ""
-    local unit = fr.unit or (s_match(n, "^PartyMemberFrame(%d+)$") and ("party"..s_match(n, "%d+")))
-    if unit and UnitExists and UnitExists(unit) then
-      c.resume = true
-      
-      if fr.SetAlpha then fr:SetAlpha(1) end
-      if fr.Show then fr:Show() end
-    end
+      local unit = fr.unit or (s_match(n, "^PartyMemberFrame(%d+)$") and ("party"..s_match(n, "%d+")))
+      if unit and UnitExists and UnitExists(unit) then
+        c.resume = true
+        if fr.SetAlpha then fr:SetAlpha(1) end
+        if fr.Show then fr:Show() end
+      end
       if not DO_NOT_FORCE_SHOW[n] then -- do not force-show conditional frames
         if fr.Show then fr:Show() end
         if fr.SetAlpha then fr:SetAlpha(1) end
@@ -414,15 +427,16 @@ local function ShowAll(reason)
   for _,c in pairs(Controllers) do
     local fr = c.frame
     local n  = fr and (fr:GetName() or "") or ""
-    
-    
+
     -- Defensive: ensure PartyMemberBackground is shown again when in a group
     local partyCount = (GetNumGroupMembers and GetNumGroupMembers() or (GetNumPartyMembers and GetNumPartyMembers() or 0))
     if n == "PartyMemberBackground" and (partyCount or 0) > 0 then
       if fr and fr.Show then fr:Show() end
       c.resume = true
     end
-local idx = s_match(n, "^PartyMemberFrame(%d+)$"); local unit = fr and (fr.unit or (idx and ("party"..idx))) or nil
+
+    local idx  = s_match(n, "^PartyMemberFrame(%d+)$")
+    local unit = fr and (fr.unit or (idx and ("party"..idx))) or nil
     if unit and UnitExists and UnitExists(unit) then
       c.resume = true
       if fr and fr.Show then fr:Show() end
@@ -441,7 +455,10 @@ scheduler:SetScript("OnUpdate", function()
   scheduler.timeLeft = scheduler.timeLeft - (arg1 or 0)
   if scheduler.timeLeft <= 0 then
     scheduler:Hide()
-    if pendingRestingCheck then pendingRestingCheck = false; f:Evaluate("zone_debounced") end
+    if pendingRestingCheck then
+      pendingRestingCheck = false
+      f:Evaluate("zone_debounced")
+    end
   end
 end)
 
@@ -462,7 +479,17 @@ local function DebouncedShowForResting()
     restoreFailsafe.t = 0; restoreFailsafe:Show()
   else
     restoreFailsafe:Hide()
-    for _,c in pairs(Controllers) do local fr=c.frame; local n=fr and (fr:GetName() or "") or ""; local idx = s_match(n, "^PartyMemberFrame(%d+)$"); local unit = fr and (fr.unit or (idx and ("party"..idx))) or nil; if unit and UnitExists and UnitExists(unit) then c.resume = true; if fr and fr.Show then fr:Show() end end; if c.resume ~= false then c:StartFade(1, "resting") end end
+    for _,c in pairs(Controllers) do
+      local fr  = c.frame
+      local n   = fr and (fr:GetName() or "") or ""
+      local idx = s_match(n, "^PartyMemberFrame(%d+)$")
+      local unit = fr and (fr.unit or (idx and ("party"..idx))) or nil
+      if unit and UnitExists and UnitExists(unit) then
+        c.resume = true
+        if fr and fr.Show then fr:Show() end
+      end
+      if c.resume ~= false then c:StartFade(1, "resting") end
+    end
   end
 end
 
@@ -477,8 +504,6 @@ local function IsActionBarish(name)
   if string.find(name, "ShapeshiftButton",  1, true) then return true end
   -- Common containers
   if name=="MainMenuBar" or name=="PetActionBarFrame" or name=="ShapeshiftBarFrame" then return true end
-  -- PlayerFrame hover hotspot
-  if name=="Immersion_PlayerHoverFrame" or name=="PlayerFrame" or (s_match and s_match(name, "^PlayerFrame")) then return true end
   -- Compat containers (DragonFlight-like)
   if name=="DFRL_ActionBar" or name=="DFRL_MainBar" then return true end
   return false
@@ -528,15 +553,18 @@ f.mouseOverBars           = false
 f.postMouseoverGraceUntil = 0   -- post-mouseover grace window (GetTime)
 
 function f:Evaluate(reason)
-  if not ImmersionDB or not ImmersionDB.enabled then dprint("Disabled; no action."); return end
+  if not ImmersionDB or not ImmersionDB.enabled then
+    dprint("Disabled; no action.")
+    return
+  end
 
   local now = GetTime and GetTime() or 0
 
   -- Grace windows: (post-combat, post-target, post-mouseover)
   if (not f.inCombat) and (
-      (f.postCombatGraceUntil    or 0) > now or
-      (f.postTargetGraceUntil    or 0) > now or
-      (f.postMouseoverGraceUntil or 0) > now
+    (f.postCombatGraceUntil    or 0) > now or
+    (f.postTargetGraceUntil    or 0) > now or
+    (f.postMouseoverGraceUntil or 0) > now
   ) then
     restoreFailsafe:Hide()
     ShowAll("grace_window")
@@ -545,9 +573,9 @@ function f:Evaluate(reason)
 
   -- Fade-in: combat, living target, or mouseover on bars
   if f.inCombat or (
-      ImmersionDB.showOnTarget
-      and UnitExists and UnitExists("target")
-      and not UnitIsDeadOrGhost("target")
+    ImmersionDB.showOnTarget
+    and UnitExists and UnitExists("target")
+    and not UnitIsDeadOrGhost("target")
   ) or f.mouseOverBars then
     restoreFailsafe:Hide()
     local why = f.inCombat and "combat" or (f.mouseOverBars and "mouseover" or "target")
@@ -576,19 +604,19 @@ f:RegisterEvent("ZONE_CHANGED_INDOORS")
 f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
 f:SetScript("OnEvent", function()
- if event == "PLAYER_ENTERING_WORLD" then
+  if event == "PLAYER_ENTERING_WORLD" then
     InitDB()
 
     C_TimerAfter = function(sec, fn)
-        local t = CreateFrame("Frame")
-        t.elapsed = 0
-        t:SetScript("OnUpdate", function()
-            t.elapsed = t.elapsed + (arg1 or 0)
-            if t.elapsed >= sec then
-                t:SetScript("OnUpdate", nil)
-                if type(fn) == "function" then fn() end
-            end
-        end)
+      local t = CreateFrame("Frame")
+      t.elapsed = 0
+      t:SetScript("OnUpdate", function()
+        t.elapsed = t.elapsed + (arg1 or 0)
+        if t.elapsed >= sec then
+          t:SetScript("OnUpdate", nil)
+          if type(fn) == "function" then fn() end
+        end
+      end)
     end
 
     -- Criar controllers normalmente
@@ -599,17 +627,16 @@ f:SetScript("OnEvent", function()
 
     -- Aguarda 5 segundos para ativar o addon
     C_TimerAfter(5, function()
-        f:Evaluate("entering_world_delayed")
+      f:Evaluate("entering_world_delayed")
     end)
 
     return
-end
-
+  end
 
   if event=="PLAYER_REGEN_DISABLED" then
     f.inCombat = true
-    f.postCombatGraceUntil = 0 -- cancel any previous window
-    f.postTargetGraceUntil = 0 -- combat has priority
+    f.postCombatGraceUntil    = 0 -- cancel any previous window
+    f.postTargetGraceUntil    = 0 -- combat has priority
     f.postMouseoverGraceUntil = 0
     f:Evaluate("combat_start")
     return
@@ -682,8 +709,12 @@ end
   if event=="ZONE_CHANGED" or event=="ZONE_CHANGED_INDOORS" or event=="ZONE_CHANGED_NEW_AREA" then
     lastZoneEvent = GetTime and GetTime() or 0
     dprint("Zone event: "..event)
-    if IsResting() then DebouncedShowForResting(); return end
+    if IsResting() then
+      DebouncedShowForResting()
+      return
+    end
   end
+
   if event=="GROUP_ROSTER_UPDATE" then
     -- Immediately reveal any PartyMemberFrameN whose unit exists (even while resting)
     for i=1,4 do
@@ -702,9 +733,9 @@ end
     -- Also ensure the PartyMemberBackground is visible if we have any party members
     local partyCount = (GetNumGroupMembers and GetNumGroupMembers() or (GetNumPartyMembers and GetNumPartyMembers() or 0)) or 0
     if partyCount > 0 then
-      local bg = G("PartyMemberBackground")
+      local bg  = G("PartyMemberBackground")
       local cbg = bg and Controllers and Controllers[bg]
-      if bg then if bg.Show then bg:Show() end end
+      if bg and bg.Show then bg:Show() end
       if cbg then
         cbg.resume = true
         cbg:StartFade(1, "roster_update_bg")
@@ -712,7 +743,6 @@ end
     end
     return
   end
-
 
   f:Evaluate(string.lower(event or ""))
 end)
@@ -737,6 +767,7 @@ end
 --   t:Hide()
 --   t.Show = function() end
 -- end
+
 -- ===================== Hide PlayerFrame Health Bar when Dragonflight UI is loaded =====================
 
 local dfuiPlayerHealthHider = CreateFrame("Frame")
