@@ -6,6 +6,28 @@
 -- The rest of the logic stays aligned with the stable version + timeouts; we don't touch chat/minimap.
 -- safe match helper (handles environments where string.match or strmatch may be nil/overridden)
 
+--[[-----------------------------------------------------------------------------
+Immersion core controller
+- Fades main UI elements in/out depending on:
+  * Combat state
+  * Having a living target
+  * Mouse over the action bars
+  * Being in a resting zone (inn/city)
+- This section is safe to tweak if you want different timings/behavior.
+
+High-level knobs you can customize:
+- TARGET_GRACE    : seconds to keep UI visible after losing a living target.
+- MOUSEOVER_GRACE : seconds to keep UI visible after leaving the action bars.
+- CLOSE_WINDOWS_ON_FADE : if true, CloseAllWindows() is called when UI fades out.
+- ImmersionDB.fadeTime : base fade duration (seconds), see FreshDB() / InitDB().
+- Post-combat grace : configured in PLAYER_REGEN_ENABLED block (search for 'grace = 8.0').
+- ZONE_DEBOUNCE   : debounce between zone changes before we react to resting.
+You can also change FRAME_NAMES / DO_NOT_FORCE_SHOW / FADE_ONLY to include or
+exclude extra frames from Immersion control.
+-----------------------------------------------------------------------------]]
+
+-- Small safe wrapper around string.match / strmatch.
+-- Some UIs override or nil-out one of these, so we try both.
 local function s_match(s, p)
   local sm = (_G and _G.string and _G.string.match) and _G.string.match or _G.strmatch
   if sm then return sm(s, p) end
@@ -20,6 +42,8 @@ local f      = CreateFrame("Frame")
 local Controllers = {}
 
 -- ====== Delay tweaks ======
+-- These values control how long the UI stays visible after certain actions.
+-- You can freely tweak them to taste without breaking the rest of the addon.
 -- TARGET_GRACE controls the grace window AFTER you lose a LIVING target.
 local TARGET_GRACE    = 2.0  -- seconds
 -- MOUSEOVER_GRACE controls the grace window AFTER leaving the action bars with the mouse.
@@ -33,10 +57,14 @@ local function CloseWindowsIfAllowed()
 end
 
 -- ===================== Config / DB =====================
+-- Returns a brand-new default DB table.
+-- You can change default fadeTime or behavior flags here if you like.
 local function FreshDB()
   return { enabled=true, debug=false, showOnTarget=true, fadeTime=3.0 }
 end
 
+-- Normalizes a value into a boolean, accepting numbers and strings
+-- like "1", "true", "on", "yes" / "0", "false", etc.
 local function asBool(v,d)
   if v==nil then return d end
   local t=type(v)
@@ -51,6 +79,8 @@ local function asBool(v,d)
   return d
 end
 
+-- Initializes ImmersionDB, filling defaults and normalizing types.
+-- Customization tip: ImmersionDB.fadeTime is the global fade duration used by controllers.
 local function InitDB()
   if type(ImmersionDB)~="table" then ImmersionDB = FreshDB() end
   ImmersionDB.enabled      = asBool(ImmersionDB.enabled, true)
@@ -59,11 +89,14 @@ local function InitDB()
   ImmersionDB.fadeTime     = tonumber(ImmersionDB.fadeTime or 3.0)
 end
 
+-- Global lookup helper that works even if getglobal is nil.
 local function G(n)
   if getglobal then return getglobal(n) end
   if _G then return _G[n] end
 end
 
+-- Debug print helper (respects ImmersionDB.debug flag).
+-- Enable ImmersionDB.debug = true in SavedVariables to see verbose logs.
 local function dprint(msg)
   if ImmersionDB and ImmersionDB.debug then
     DEFAULT_CHAT_FRAME:AddMessage(prefix.."|cFFBBBBBB"..msg.."|r")
@@ -71,6 +104,9 @@ local function dprint(msg)
 end
 
 -- ===================== FIXED LIST OF FRAMES =====================
+-- List of frames controlled by Immersion.
+-- To add/remove frames from being faded, edit this list.
+-- Make sure each frame supports :Show(), :Hide() and :SetAlpha().
 local FRAME_NAMES = {
   -- Action bars
   "MainMenuBar",
@@ -107,6 +143,9 @@ local FRAME_NAMES = {
 }
 
 -- Frames we must NOT force :Show() on (conditional frames)
+-- Frames we must not force :Show() on.
+-- These are conditional frames that should only appear when the game decides
+-- (party frames, pet frame, etc.).
 local DO_NOT_FORCE_SHOW = {
   TargetFrameToT = true,
   PetFrame = true,
@@ -120,6 +159,8 @@ local DO_NOT_FORCE_SHOW = {
 
 -- Bars/frames that should only alpha-fade (we do NOT call :Hide() at the end)
 -- NOTE: Removed BuffFrame/TemporaryEnchantFrame here, because we explicitly Hide() them on fade-out.
+-- Frames that only alpha-fade; we do NOT call :Hide() at the end of fade-out.
+-- Useful for bars that should always logically exist, just be transparent.
 local FADE_ONLY = {
   MainMenuBar = true,
   MultiBarBottomLeft = true, MultiBarBottomRight = true, MultiBarLeft = true, MultiBarRight = true,
@@ -131,6 +172,12 @@ local FADE_ONLY = {
 
 -- ===================== CONTROLLERS (one per frame) =====================
 
+-- Creates a controller object for a single frame.
+-- Each controller manages:
+--   * Fade animation state
+--   * Whether a frame should "resume" (be shown again) when UI is revealed
+--   * Buff-specific anti-flicker logic (deferred fade in/out)
+-- You normally do not need to modify this unless changing fade mechanics.
 local function NewController(fr)
   local function IsBuffLike(name)
     return name == "BuffFrame" or name == "TemporaryEnchantFrame"
@@ -274,6 +321,9 @@ local function NewController(fr)
   return c
 end
 
+-- Rebuilds the Controllers table from FRAME_NAMES.
+-- Called on load and once again shortly after PEW to catch late-created frames.
+-- If you add new frame names, they will be wired up here.
 local function ResolveControllers()
   Controllers = {}
   for _,name in ipairs(FRAME_NAMES) do
@@ -290,6 +340,8 @@ local function ResolveControllers()
 end
 
 -- ===================== ZoneText guard & failsafes =====================
+-- Returns true if the frame is shown and has a visible alpha (> 0.1).
+-- Used to detect active ZoneText/SubZoneText.
 local function IsFrameAlphaActive(fr)
   if not fr or not fr.IsShown or not fr:IsShown() then return false end
   if fr.GetAlpha then
@@ -299,6 +351,8 @@ local function IsFrameAlphaActive(fr)
   return true
 end
 
+-- Returns true if the ZoneText or SubZoneText frames are visible.
+-- We delay fades while zone text is on screen to avoid harsh pops.
 local function IsZoneTextActive()
   local Z, S = G("ZoneTextFrame"), G("SubZoneTextFrame")
   return IsFrameAlphaActive(Z) or IsFrameAlphaActive(S)
@@ -352,6 +406,8 @@ zoneShowGuard:SetScript("OnUpdate", function()
   end
 end)
 
+-- Forces a fade-in on all controllers that are allowed to resume.
+-- Respects DO_NOT_FORCE_SHOW and the per-frame resume flags.
 local function ForceFadeInAll(reason)
   for fr,c in pairs(Controllers) do
     local name = fr:GetName() or ""
@@ -362,6 +418,8 @@ local function ForceFadeInAll(reason)
   end
 end
 
+-- Immediately restores all resumable frames to full alpha and shown state.
+-- Mainly used by failsafes; not normally something you need to call manually.
 local function ForceRestoreAllInstant()
   for fr,c in pairs(Controllers) do
     if c.resume ~= false then
@@ -392,6 +450,9 @@ restoreFailsafe:SetScript("OnUpdate", function()
 end)
 
 -- ===================== Helpers =====================
+-- Triggers fade-out on all controlled frames, optionally delayed by ZoneText.
+-- Customization tip: toggling CLOSE_WINDOWS_ON_FADE changes whether game windows
+-- (spellbook, character sheet, etc.) are auto-closed when the UI fades out.
 local function HideAll(reason)
   local any=false; for _ in pairs(Controllers) do any=true; break end
   if not any then return end
@@ -405,11 +466,17 @@ local function HideAll(reason)
   end
   CloseWindowsIfAllowed()
   for fr,c in pairs(Controllers) do
-    c.resume = fr:IsShown()
+    -- Do not overwrite resume to false when the frame is already hidden.
+    -- Only mark resume as true if the frame is currently visible.
+    if fr:IsShown() then
+      c.resume = true
+    end
     c:StartFade(0, reason or "hide")
   end
 end
 
+-- Triggers fade-in on all frames that have resume ~= false.
+-- Also makes sure party backgrounds are visible if you are grouped.
 local function ShowAll(reason)
   local any=false; for _ in pairs(Controllers) do any=true; break end
   if not any then return end
@@ -447,6 +514,7 @@ end
 
 -- ===================== Debounced ENTER logic =====================
 local ZONE_DEBOUNCE = 0.6
+-- Increase this if you see flicker when changing zones; decrease to react faster.
 local lastZoneEvent, pendingRestingCheck = 0, false
 
 local scheduler = CreateFrame("Frame"); scheduler:Hide()
@@ -462,6 +530,9 @@ scheduler:SetScript("OnUpdate", function()
   end
 end)
 
+-- Shows UI when you are in a resting zone, with zone-change debounce.
+-- This avoids flickering when multiple ZONE_CHANGED events fire quickly.
+-- If you want extra delay for resting, this is one of the safe places to tweak.
 local function DebouncedShowForResting()
   local now = GetTime and GetTime() or 0
   if now - lastZoneEvent < ZONE_DEBOUNCE then
@@ -494,6 +565,8 @@ local function DebouncedShowForResting()
 end
 
 -- ===================== Action bars mouseover =====================
+-- Heuristic: returns true if a frame name looks like an action bar or related
+-- button/container. Used by hoverWatch to detect mouse-over on action bars.
 local function IsActionBarish(name)
   if not name then return false end
   -- Common buttons
@@ -552,6 +625,15 @@ f.lastTargetAlive         = nil -- last known target alive state
 f.mouseOverBars           = false
 f.postMouseoverGraceUntil = 0   -- post-mouseover grace window (GetTime)
 
+-- Central brain of Immersion.
+-- Decides whether the UI should be visible or hidden based on:
+--   * Combat flag
+--   * Alive target
+--   * Mouse over action bars
+--   * Resting state
+--   * Grace windows after combat/target/mouseover
+-- You can adjust grace durations via:
+--   TARGET_GRACE, MOUSEOVER_GRACE and the 'grace' value in PLAYER_REGEN_ENABLED.
 function f:Evaluate(reason)
   if not ImmersionDB or not ImmersionDB.enabled then
     dprint("Disabled; no action.")
@@ -603,6 +685,15 @@ f:RegisterEvent("ZONE_CHANGED")
 f:RegisterEvent("ZONE_CHANGED_INDOORS")
 f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
+-- Master event handler.
+-- Handles:
+--   PLAYER_ENTERING_WORLD  : initialization + startup delay
+--   PLAYER_REGEN_DISABLED  : entering combat
+--   PLAYER_REGEN_ENABLED   : leaving combat with grace window
+--   PLAYER_TARGET_CHANGED  : target logic + grace when target is lost
+--   PLAYER_UPDATE_RESTING  : entering/leaving resting areas
+--   ZONE_* events          : debounce + resting check on zone change
+--   GROUP_ROSTER_UPDATE    : ensure party frames/background fade correctly
 f:SetScript("OnEvent", function()
   if event == "PLAYER_ENTERING_WORLD" then
     InitDB()
@@ -619,13 +710,13 @@ f:SetScript("OnEvent", function()
       end)
     end
 
-    -- Criar controllers normalmente
+    -- Create controllers normally
     ResolveControllers()
     C_TimerAfter(0.3, ResolveControllers)
 
     dprint("Loaded. Applying 5-second startup delay.")
 
-    -- Aguarda 5 segundos para ativar o addon
+    -- Wait 5 seconds before enabling the addon
     C_TimerAfter(5, function()
       f:Evaluate("entering_world_delayed")
     end)
@@ -645,6 +736,7 @@ f:SetScript("OnEvent", function()
   if event=="PLAYER_REGEN_ENABLED" then
     -- Leaving combat: apply an Xs window BEFORE starting fade-out
     f.inCombat = false
+    -- Customization: this is how long (in seconds) the UI stays after leaving combat.
     local grace = 8.0 -- adjust post-combat delay here
     f.postCombatGraceUntil = (GetTime and GetTime() or 0) + grace
     C_TimerAfter(grace, function()
@@ -699,10 +791,15 @@ f:SetScript("OnEvent", function()
 
   if event=="PLAYER_UPDATE_RESTING" then
     if IsResting() then
+																	  
+								  
+																					   
+										 
       DebouncedShowForResting()
       C_TimerAfter(1.0, function() ForceFadeInAll("resting_timer_1s") end)
       C_TimerAfter(3.5, function() ForceFadeInAll("resting_timer_3_5s") end)
-      return
+		   
+	  return
     end
   end
 
@@ -776,6 +873,8 @@ dfuiPlayerHealthHider:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local dfuiLoaded = false
 
+-- Checks whether the DragonflightReloaded UI addon is loaded.
+-- Used so we only hide the health bar when that UI is active.
 local function DFUI_IsLoaded()
   if dfuiLoaded then return true end
   if IsAddOnLoaded then
@@ -787,6 +886,8 @@ local function DFUI_IsLoaded()
   return false
 end
 
+-- Hides the classic PlayerFrame health bar when DragonflightReloaded is loaded.
+-- This prevents duplicated health bars if the modern UI already shows one.
 local function DFUI_HidePlayerHealthBar()
   if not DFUI_IsLoaded() then return end
   if not PlayerFrame or not PlayerFrameHealthBar then return end
