@@ -791,15 +791,16 @@ f:SetScript("OnEvent", function()
 
   if event=="PLAYER_UPDATE_RESTING" then
     if IsResting() then
-																	  
-								  
-																					   
-										 
-      DebouncedShowForResting()
-      C_TimerAfter(1.0, function() ForceFadeInAll("resting_timer_1s") end)
-      C_TimerAfter(3.5, function() ForceFadeInAll("resting_timer_3_5s") end)
-		   
-	  return
+      -- Waits 4 seconds before fading the UI in when entering resting state
+      C_TimerAfter(4.0, function()
+        -- If, when the timer fires, we are still in resting state, then show the UI
+        if IsResting and IsResting() then
+          DebouncedShowForResting()
+          C_TimerAfter(1.0, function() ForceFadeInAll("resting_timer_1s") end)
+          C_TimerAfter(3.5, function() ForceFadeInAll("resting_timer_3_5s") end)
+        end
+      end)
+      return
     end
   end
 
