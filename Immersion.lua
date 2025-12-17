@@ -45,9 +45,9 @@ local Controllers = {}
 -- These values control how long the UI stays visible after certain actions.
 -- You can freely tweak them to taste without breaking the rest of the addon.
 -- TARGET_GRACE controls the grace window AFTER you lose a LIVING target.
-local TARGET_GRACE    = 2.0  -- seconds
+local TARGET_GRACE    = 12.0  -- seconds
 -- MOUSEOVER_GRACE controls the grace window AFTER leaving the action bars with the mouse.
-local MOUSEOVER_GRACE = 2.0  -- seconds
+local MOUSEOVER_GRACE = 12.0  -- seconds
 -- Only close game windows on fade if explicitly enabled
 local CLOSE_WINDOWS_ON_FADE = false
 local function CloseWindowsIfAllowed()
@@ -132,6 +132,9 @@ local FRAME_NAMES = {
   "DFRL_GryphonContainer","DFRLBagToggleButton","DFRLEBCMicroButton","DFRLLFTMicroButton",
   "DFRLPvPMicroButton","DFRL_MainBar","DFRL_RepBar","DFRL_XPBar","DFRL_NetStatsFrame",
   "DFRL_LatencyIndicator","DFRL_PagingContainer","DFRL_ActionBar",
+
+  -- Class Addons
+  "COEEarthFrame","COEFireFrame",
 
   -- Quest tracker (Classic/Turtle)
   "QuestWatchFrame",
@@ -737,7 +740,7 @@ f:SetScript("OnEvent", function()
     -- Leaving combat: apply an Xs window BEFORE starting fade-out
     f.inCombat = false
     -- Customization: this is how long (in seconds) the UI stays after leaving combat.
-    local grace = 8.0 -- adjust post-combat delay here
+    local grace = 10.0 -- adjust post-combat delay here
     f.postCombatGraceUntil = (GetTime and GetTime() or 0) + grace
     C_TimerAfter(grace, function()
       if not f.inCombat then
