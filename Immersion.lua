@@ -128,10 +128,20 @@ local FRAME_NAMES = {
   -- ChatFrame
   "ChatFrameMenuButton","ChatFrame1UpButton","ChatFrame1DownButton","ChatFrame1BottomButton",
 
+  -- ChatSuey
+  "ChatFrame1Tab","ChatFrame1ResizeTop","ChatFrame2Tab","FriendsMicroButton",
+
+  -- ShaguDPS
+  "ShaguDPSWindow","ShaguDPSReset",
+
+  -- pfQuest
+  "pfQuestMapTracker",
+
   -- DragonflightUI: Reforged
   "DFRL_GryphonContainer","DFRLBagToggleButton","DFRLEBCMicroButton","DFRLLFTMicroButton",
   "DFRLPvPMicroButton","DFRL_MainBar","DFRL_RepBar","DFRL_XPBar",
   "DFRL_LatencyIndicator","DFRL_PagingContainer","DFRL_ActionBar","DFRLLowLevelTalentsButton","DFRL_ShapeshiftBar",
+  "DFRL_PWB_Panel",
 
   -- Class Addons
   "COEEarthFrame","COEFireFrame",
@@ -868,58 +878,3 @@ end
 --   t:Hide()
 --   t.Show = function() end
 -- end
-
--- ===================== Hide PlayerFrame Health Bar when Dragonflight UI is loaded =====================
-
-local dfuiPlayerHealthHider = CreateFrame("Frame")
-dfuiPlayerHealthHider:RegisterEvent("ADDON_LOADED")
-dfuiPlayerHealthHider:RegisterEvent("PLAYER_ENTERING_WORLD")
-
-local dfuiLoaded = false
-
--- Checks whether the DragonflightUI: Reforged addon is loaded.
--- Used so we only hide the health bar when that UI is active.
-local function DFUI_IsLoaded()
-  if dfuiLoaded then return true end
-  if IsAddOnLoaded then
-    if IsAddOnLoaded("DragonflightUI-Reforged") then
-      dfuiLoaded = true
-      return true
-    end
-  end
-  return false
-end
-
--- Hides the classic PlayerFrame health bar when DragonflightUI: Reforged is loaded.
--- This prevents duplicated health bars if the modern UI already shows one.
-local function DFUI_HidePlayerHealthBar()
-  if not DFUI_IsLoaded() then return end
-  if not PlayerFrame or not PlayerFrameHealthBar then return end
-
-  PlayerFrameHealthBar:Hide()
-  PlayerFrameHealthBar.Show = function() end
-
-  if PlayerFrameHealthBarText then
-    PlayerFrameHealthBarText:Hide()
-    PlayerFrameHealthBarText.Show = function() end
-  end
-  if PlayerFrameHealthBarTextLeft then
-    PlayerFrameHealthBarTextLeft:Hide()
-    PlayerFrameHealthBarTextLeft.Show = function() end
-  end
-  if PlayerFrameHealthBarTextRight then
-    PlayerFrameHealthBarTextRight:Hide()
-    PlayerFrameHealthBarTextRight.Show = function() end
-  end
-end
-
-dfuiPlayerHealthHider:SetScript("OnEvent", function()
-  if event == "ADDON_LOADED" then
-    if arg1 == "DragonflightUI-Reforged" then
-      dfuiLoaded = true
-      DFUI_HidePlayerHealthBar()
-    end
-  elseif event == "PLAYER_ENTERING_WORLD" then
-    DFUI_HidePlayerHealthBar()
-  end
-end)
