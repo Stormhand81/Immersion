@@ -111,12 +111,12 @@ local FRAME_NAMES = {
   -- Action bars
   "MainMenuBar",
   "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarLeft", "MultiBarRight",
-  "PetActionBarFrame", "ShapeshiftBarFrame","DFRL_ShapeshiftBar",
+  "PetActionBarFrame", "ShapeshiftBarFrame",
 
   -- MicroMenu
   "CharacterMicroButton","SpellbookMicroButton","TalentMicroButton",
   "QuestLogMicroButton","SocialsMicroButton","WorldMapMicroButton",
-  "MainMenuMicroButton","HelpMicroButton","DFRLLowLevelTalentsButton",
+  "MainMenuMicroButton","HelpMicroButton",
 
   -- Bags
   "MainMenuBarBackpackButton","CharacterBag0Slot","CharacterBag1Slot",
@@ -128,10 +128,10 @@ local FRAME_NAMES = {
   -- ChatFrame
   "ChatFrameMenuButton","ChatFrame1UpButton","ChatFrame1DownButton","ChatFrame1BottomButton",
 
-  -- DragonFlight-like UI (compat)
+  -- DragonflightUI: Reforged
   "DFRL_GryphonContainer","DFRLBagToggleButton","DFRLEBCMicroButton","DFRLLFTMicroButton",
   "DFRLPvPMicroButton","DFRL_MainBar","DFRL_RepBar","DFRL_XPBar",
-  "DFRL_LatencyIndicator","DFRL_PagingContainer","DFRL_ActionBar",
+  "DFRL_LatencyIndicator","DFRL_PagingContainer","DFRL_ActionBar","DFRLLowLevelTalentsButton","DFRL_ShapeshiftBar",
 
   -- Class Addons
   "COEEarthFrame","COEFireFrame",
@@ -877,12 +877,12 @@ dfuiPlayerHealthHider:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local dfuiLoaded = false
 
--- Checks whether the DragonflightReloaded UI addon is loaded.
+-- Checks whether the DragonflightUI: Reforged addon is loaded.
 -- Used so we only hide the health bar when that UI is active.
 local function DFUI_IsLoaded()
   if dfuiLoaded then return true end
   if IsAddOnLoaded then
-    if IsAddOnLoaded("-DragonflightReloaded") then
+    if IsAddOnLoaded("DragonflightUI-Reforged") then
       dfuiLoaded = true
       return true
     end
@@ -890,7 +890,7 @@ local function DFUI_IsLoaded()
   return false
 end
 
--- Hides the classic PlayerFrame health bar when DragonflightReloaded is loaded.
+-- Hides the classic PlayerFrame health bar when DragonflightUI: Reforged is loaded.
 -- This prevents duplicated health bars if the modern UI already shows one.
 local function DFUI_HidePlayerHealthBar()
   if not DFUI_IsLoaded() then return end
@@ -915,7 +915,7 @@ end
 
 dfuiPlayerHealthHider:SetScript("OnEvent", function()
   if event == "ADDON_LOADED" then
-    if arg1 == "-DragonflightReloaded" then
+    if arg1 == "DragonflightUI-Reforged" then
       dfuiLoaded = true
       DFUI_HidePlayerHealthBar()
     end
