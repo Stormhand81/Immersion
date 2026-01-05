@@ -130,7 +130,7 @@ local FRAME_NAMES = {
 
   -- DragonFlight-like UI (compat)
   "DFRL_GryphonContainer","DFRLBagToggleButton","DFRLEBCMicroButton","DFRLLFTMicroButton",
-  "DFRLPvPMicroButton","DFRL_MainBar","DFRL_RepBar","DFRL_XPBar","DFRL_NetStatsFrame",
+  "DFRLPvPMicroButton","DFRL_MainBar","DFRL_RepBar","DFRL_XPBar",
   "DFRL_LatencyIndicator","DFRL_PagingContainer","DFRL_ActionBar",
 
   -- Class Addons
