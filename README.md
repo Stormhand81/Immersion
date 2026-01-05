@@ -5,7 +5,7 @@
 
 Developed with a philosophy of **“invisible until needed”**, Immersion dynamically hides cluttered UI elements and brings them back only when they matter. The result is a more cinematic experience that respects WoW’s original aesthetic while offering a refined and modernized feel.
 
-Made to work with https://github.com/Stormhand81/DragonflightUI-Reforged
+Made to work with [DragonFlight UI: Reforged](https://github.com/Stormhand81/DragonflightUI-Reforged) or Vanilla UI.
 
 ---
 
