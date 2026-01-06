@@ -126,7 +126,7 @@ local FRAME_NAMES = {
   "PlayerFrame","PetFrame","TargetFrameToT",
 
   -- ChatFrame
-  "ChatFrameMenuButton","ChatFrame1UpButton","ChatFrame1DownButton","ChatFrame1BottomButton","ChatFrame1",
+  "ChatFrameMenuButton","ChatFrame1UpButton","ChatFrame1DownButton","ChatFrame1BottomButton",
 
   -- ShaguDPS
   "ShaguDPSWindow","ShaguDPSReset",
