@@ -2,7 +2,7 @@
 ## Title: Immersion
 ## Notes: Hides UI Elements when outside resting zones for more immersion.
 ## Author: Stormhand
-## Version: 1.2.4
+## Version: 1.2.5
 ## SavedVariables: ImmersionDB
 
 Immersion.lua
