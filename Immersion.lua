@@ -635,6 +635,16 @@ f.lastTargetAlive         = nil -- last known target alive state
 f.mouseOverBars           = false
 f.postMouseoverGraceUntil = 0   -- post-mouseover grace window (GetTime)
 
+-- Returns true if the player is at full health (HP == MaxHP).
+-- Used to prevent UI fade-out while the player is injured.
+local function IsPlayerFullHealth()
+  if not (UnitHealth and UnitHealthMax) then return true end -- safe fallback
+  local max = UnitHealthMax("player") or 0
+  if max <= 0 then return false end
+  local hp  = UnitHealth("player") or 0
+  return hp >= max
+end
+
 -- Central brain of Immersion.
 -- Decides whether the UI should be visible or hidden based on:
 --   * Combat flag
@@ -675,7 +685,14 @@ function f:Evaluate(reason)
     return
   end
 
-  -- Remaining logic
+-- NEW: Do not fade out UI if player is not at 100% health
+if not IsPlayerFullHealth() then
+  restoreFailsafe:Hide()
+  ShowAll("priority:player_not_full_hp")
+  return
+end
+
+-- Remaining logic
   if IsResting() then
     DebouncedShowForResting()
   else
@@ -694,6 +711,8 @@ f:RegisterEvent("GROUP_ROSTER_UPDATE")
 f:RegisterEvent("ZONE_CHANGED")
 f:RegisterEvent("ZONE_CHANGED_INDOORS")
 f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+f:RegisterEvent("UNIT_HEALTH")
+f:RegisterEvent("UNIT_MAXHEALTH")
 
 -- Master event handler.
 -- Handles:
@@ -848,6 +867,13 @@ f:SetScript("OnEvent", function()
         cbg.resume = true
         cbg:StartFade(1, "roster_update_bg")
       end
+    end
+    return
+  end
+
+  if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+    if arg1 == "player" then
+      f:Evaluate("player_health_changed")
     end
     return
   end
