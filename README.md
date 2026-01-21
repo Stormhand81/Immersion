@@ -8,7 +8,9 @@ Developed with a philosophy of **“invisible until needed”**, Immersion dynam
 Made to work with [DragonFlight UI: Reforged](https://github.com/Stormhand81/DragonflightUI-Reforged) or Vanilla UI.
 
 ![WoW 2026-01-21 1](https://github.com/user-attachments/assets/6913a768-28fd-4bfc-bdbd-5634925d5ebd)
+UI hidden when not in combat/resting/targetting/mouseover action bars
 ![WoW 2026-01-21 2](https://github.com/user-attachments/assets/ae479aa6-e003-4235-b318-0878cf18504f)
+UI show
 
 ---
 
