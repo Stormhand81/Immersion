@@ -45,7 +45,7 @@ local Controllers = {}
 -- These values control how long the UI stays visible after certain actions.
 -- You can freely tweak them to taste without breaking the rest of the addon.
 -- TARGET_GRACE controls the grace window AFTER you lose a LIVING target.
-local TARGET_GRACE    = 12.0  -- seconds
+local TARGET_GRACE    = 5.0  -- seconds
 -- MOUSEOVER_GRACE controls the grace window AFTER leaving the action bars with the mouse.
 local MOUSEOVER_GRACE = 12.0  -- seconds
 -- Only close game windows on fade if explicitly enabled
