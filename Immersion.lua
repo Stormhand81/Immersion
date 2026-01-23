@@ -111,7 +111,7 @@ local FRAME_NAMES = {
   -- Action bars
   "MainMenuBar",
   "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarLeft", "MultiBarRight",
-  "PetActionBarFrame", "ShapeshiftBarFrame",
+  "PetActionBarFrame", "ShapeshiftBarFrame", "DFRL_PetBar",
 
   -- MicroMenu
   "CharacterMicroButton","SpellbookMicroButton","TalentMicroButton",
