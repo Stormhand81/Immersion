@@ -160,11 +160,6 @@ local DO_NOT_FORCE_SHOW = {
   TargetFrameToT = true,
   PetFrame = true,
   PetCastingBarFrame = true,
-  PartyMemberFrame2 = true,
-  PartyMemberFrame3 = true,
-  PartyMemberFrame4 = true,
-  PartyMemberFrame1 = true,
-  PartyMemberBackground = true,
 }
 
 -- Bars/frames that should only alpha-fade (we do NOT call :Hide() at the end)
@@ -176,8 +171,7 @@ local FADE_ONLY = {
   MultiBarBottomLeft = true, MultiBarBottomRight = true, MultiBarLeft = true, MultiBarRight = true,
   PetActionBarFrame = true, ShapeshiftBarFrame = true,
   PetFrame = true, -- prevents disappearing for good at the end of fade-out
-  PartyMemberBackground = true,
-  -- BuffFrame = true, TemporaryEnchantFrame = true, -- <- removed on purpose
+-- BuffFrame = true, TemporaryEnchantFrame = true, -- <- removed on purpose
 }
 
 -- ===================== CONTROLLERS (one per frame) =====================
@@ -434,7 +428,7 @@ local function ForceRestoreAllInstant()
   for fr,c in pairs(Controllers) do
     if c.resume ~= false then
       local n = fr:GetName() or ""
-      local unit = fr.unit or (s_match(n, "^PartyMemberFrame(%d+)$") and ("party"..s_match(n, "%d+")))
+      local unit = fr.unit
       if unit and UnitExists and UnitExists(unit) then
         c.resume = true
         if fr.SetAlpha then fr:SetAlpha(1) end
@@ -504,16 +498,7 @@ local function ShowAll(reason)
   for _,c in pairs(Controllers) do
     local fr = c.frame
     local n  = fr and (fr:GetName() or "") or ""
-
-    -- Defensive: ensure PartyMemberBackground is shown again when in a group
-    local partyCount = (GetNumGroupMembers and GetNumGroupMembers() or (GetNumPartyMembers and GetNumPartyMembers() or 0))
-    if n == "PartyMemberBackground" and (partyCount or 0) > 0 then
-      if fr and fr.Show then fr:Show() end
-      c.resume = true
-    end
-
-    local idx  = s_match(n, "^PartyMemberFrame(%d+)$")
-    local unit = fr and (fr.unit or (idx and ("party"..idx))) or nil
+    local unit = fr and fr.unit or nil
     if unit and UnitExists and UnitExists(unit) then
       c.resume = true
       if fr and fr.Show then fr:Show() end
@@ -563,8 +548,7 @@ local function DebouncedShowForResting()
     for _,c in pairs(Controllers) do
       local fr  = c.frame
       local n   = fr and (fr:GetName() or "") or ""
-      local idx = s_match(n, "^PartyMemberFrame(%d+)$")
-      local unit = fr and (fr.unit or (idx and ("party"..idx))) or nil
+    local unit = fr and fr.unit or nil
       if unit and UnitExists and UnitExists(unit) then
         c.resume = true
         if fr and fr.Show then fr:Show() end
@@ -673,6 +657,15 @@ function f:Evaluate(reason)
     return
   end
 
+
+  -- NEW: Do not fade out UI while in a raid
+  local inRaid = (IsInRaid and IsInRaid()) or (GetNumRaidMembers and (GetNumRaidMembers() or 0) > 0)
+  if inRaid then
+    restoreFailsafe:Hide()
+    ShowAll("priority:raid")
+    return
+  end
+
   -- Fade-in: combat, living target, or mouseover on bars
   if f.inCombat or (
     ImmersionDB.showOnTarget
@@ -722,7 +715,7 @@ f:RegisterEvent("UNIT_MAXHEALTH")
 --   PLAYER_TARGET_CHANGED  : target logic + grace when target is lost
 --   PLAYER_UPDATE_RESTING  : entering/leaving resting areas
 --   ZONE_* events          : debounce + resting check on zone change
---   GROUP_ROSTER_UPDATE    : ensure party frames/background fade correctly
+--   GROUP_ROSTER_UPDATE    : re-evaluate state (raid/party changes)
 f:SetScript("OnEvent", function()
   if event == "PLAYER_ENTERING_WORLD" then
     InitDB()
@@ -843,31 +836,7 @@ f:SetScript("OnEvent", function()
   end
 
   if event=="GROUP_ROSTER_UPDATE" then
-    -- Immediately reveal any PartyMemberFrameN whose unit exists (even while resting)
-    for i=1,4 do
-      local unit = "party"..i
-      if UnitExists and UnitExists(unit) then
-        local fr = G("PartyMemberFrame"..i)
-        local c  = fr and Controllers and Controllers[fr]
-        if fr and c then
-          if fr.Show then fr:Show() end
-          if fr.SetAlpha then fr:SetAlpha(0) end -- prepare smooth fade-in
-          c.resume = true
-          c:StartFade(1, "roster_update")
-        end
-      end
-    end
-    -- Also ensure the PartyMemberBackground is visible if we have any party members
-    local partyCount = (GetNumGroupMembers and GetNumGroupMembers() or (GetNumPartyMembers and GetNumPartyMembers() or 0)) or 0
-    if partyCount > 0 then
-      local bg  = G("PartyMemberBackground")
-      local cbg = bg and Controllers and Controllers[bg]
-      if bg and bg.Show then bg:Show() end
-      if cbg then
-        cbg.resume = true
-        cbg:StartFade(1, "roster_update_bg")
-      end
-    end
+    f:Evaluate("group_roster_update")
     return
   end
 
